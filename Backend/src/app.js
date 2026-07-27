@@ -55,13 +55,17 @@ app.use('/api/auth', authRoutes); // Consider removing duplicate if not needed
 app.use('/api/v1/analytics', analyticsRoutes);
 
 // 5. Static Files & Production Logic
+// 5. Static Files & Production Logic
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'public')));
+  // CHANGE 'public' to 'dist' (or 'build' if using Create React App)
+  const staticPath = path.join(__dirname, 'dist'); 
+  
+  app.use(express.static(staticPath));
 
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(staticPath, 'index.html'));
   });
-}
+}   
 
 // 6. Error Handler (LAST)
 app.use(errorHandler);
