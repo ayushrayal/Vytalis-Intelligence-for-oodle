@@ -55,17 +55,16 @@ app.use('/api/auth', authRoutes); // Consider removing duplicate if not needed
 app.use('/api/v1/analytics', analyticsRoutes);
 
 // 5. Static Files & Production Logic
-// 5. Static Files & Production Logic
 if (process.env.NODE_ENV === 'production') {
-  // CHANGE 'public' to 'dist' (or 'build' if using Create React App)
-  const staticPath = path.join(__dirname, 'dist'); 
+  // Change 'dist' to 'public' to match your vite.config.js
+  const staticPath = path.join(__dirname, 'public'); 
   
   app.use(express.static(staticPath));
 
   app.get('*', (req, res) => {
     res.sendFile(path.join(staticPath, 'index.html'));
   });
-}   
+}    
 
 // 6. Error Handler (LAST)
 app.use(errorHandler);
