@@ -4,5 +4,6 @@ export const envConfig = {
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPasswordHash: process.env.ADMIN_PASSWORD_HASH || '',
   oodleApiKey: process.env.OODLE_API_KEY || '',
-  oodleBaseUrl: process.env.OODLE_BASE_URL || ''
+  oodleBaseUrl: process.env.OODLE_BASE_URL || '',
+  frontendUrl: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173')
 };
