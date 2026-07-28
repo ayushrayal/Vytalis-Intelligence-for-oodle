@@ -49,7 +49,7 @@ export function useDashboard() {
 
     try {
       const response = await getDailyAnalytics(params, controller.signal);
-      const normalized = normalizeDashboardData(response);
+      const normalized = normalizeDashboardData(response, { startDate, endDate });
       setData(normalized);
       markRefreshSuccess();
     } catch (err) {

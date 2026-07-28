@@ -4,8 +4,7 @@ import {
   ShoppingBag,
   Globe2,
   Users,
-  Settings,
-  Zap
+  Settings
 } from 'lucide-react';
 
 const navItems = [
@@ -22,8 +21,8 @@ export default function Sidebar() {
       <div className="space-y-6">
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-9 h-9 rounded-xl bg-primary text-surface flex items-center justify-center font-black text-base shadow-xs shrink-0">
-            <Zap className="w-5 h-5 fill-current" />
+          <div className="w-9 h-9 rounded-xl bg-primary text-surface flex items-center justify-center font-black text-sm tracking-wider shadow-xs shrink-0 select-none">
+            VM
           </div>
           <div className="flex flex-col leading-none">
             <span className="font-extrabold text-sm text-text-primary tracking-tight">

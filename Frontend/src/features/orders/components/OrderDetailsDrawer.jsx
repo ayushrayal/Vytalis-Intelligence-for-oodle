@@ -156,15 +156,6 @@ export default function OrderDetailsDrawer({ order, onClose }) {
             </div>
           </div>
 
-          {/* Full Raw Object Dump Inspection */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Raw Payload Attributes
-            </h3>
-            <pre className="bg-slate-900 text-slate-100 text-[11px] font-mono p-4 rounded-xl overflow-x-auto max-h-40">
-              {JSON.stringify(order.rawOrder, null, 2)}
-            </pre>
-          </div>
         </div>
 
         {/* Drawer Footer */}

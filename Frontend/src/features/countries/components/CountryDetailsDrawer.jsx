@@ -106,15 +106,6 @@ export default function CountryDetailsDrawer({ countryData, onClose }) {
             </div>
           </div>
 
-          {/* Raw Payload Attributes */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Raw API Payload
-            </h3>
-            <pre className="bg-slate-900 text-slate-100 text-[11px] font-mono p-4 rounded-xl overflow-x-auto max-h-48">
-              {JSON.stringify(countryData.rawCountry, null, 2)}
-            </pre>
-          </div>
         </div>
 
         {/* Drawer Footer */}

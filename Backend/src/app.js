@@ -55,8 +55,7 @@ app.use('/api/auth', authRoutes); // Consider removing duplicate if not needed
 app.use('/api/v1/analytics', analyticsRoutes);
 
 // 5. Static Files & Production Logic
-console.log("Current directory:", __dirname);
-console.log("Public folder:", path.join(__dirname, "public"));
+
 if (process.env.NODE_ENV === 'production') {
   // Change 'dist' to 'public' to match your vite.config.js
   const staticPath = path.join(__dirname, 'public'); 

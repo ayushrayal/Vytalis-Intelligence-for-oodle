@@ -1,44 +1,80 @@
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip
-} from 'recharts';
-import { DollarSign, ShoppingBag, Users, CreditCard } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { useDashboard } from '../hooks/useDashboard.js';
+import { useDashboardLayout } from '../hooks/useDashboardLayout.js';
+import { CATEGORIES } from '../utils/normalizeDashboardData.js';
 import {
-  MetricGrid,
   StatCard,
-  AnalyticsCard,
   LoadingSkeleton,
   ErrorState,
-  EmptyState
+  EmptyState,
+  CustomizeDashboardDrawer
 } from '../components/index.js';
-
-const getMetricIcon = (type) => {
-  switch (type) {
-    case 'currency':
-      return DollarSign;
-    case 'number':
-      return ShoppingBag;
-    case 'users':
-      return Users;
-    default:
-      return CreditCard;
-  }
-};
 
 export default function DashboardPage() {
   const { data, loading, error, refresh } = useDashboard();
+  const {
+    visibleWidgets,
+    widgetOrder,
+    toggleWidget,
+    toggleCategoryWidgets,
+    reorderWidgets,
+    resetLayout
+  } = useDashboardLayout();
+
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [draggedWidgetId, setDraggedWidgetId] = useState(null);
+
+  // Filter and sort active widgets based on user layout preferences
+  const activeWidgets = useMemo(() => {
+    if (!data || !data.widgets) return [];
+    return data.widgets
+      .filter((w) => visibleWidgets.includes(w.id))
+      .sort((a, b) => {
+        const indexA = widgetOrder.indexOf(a.id);
+        const indexB = widgetOrder.indexOf(b.id);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      });
+  }, [data, visibleWidgets, widgetOrder]);
+
+  // Group active widgets by category
+  const activeWidgetsByCategory = useMemo(() => {
+    const grouped = {};
+    CATEGORIES.forEach((cat) => {
+      grouped[cat.id] = activeWidgets.filter((w) => w.categoryId === cat.id);
+    });
+    return grouped;
+  }, [activeWidgets]);
+
+  // Drag & Drop Handlers
+  const handleDragStart = (e, id) => {
+    setDraggedWidgetId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (draggedWidgetId && targetId && draggedWidgetId !== targetId) {
+      reorderWidgets(draggedWidgetId, targetId);
+    }
+    setDraggedWidgetId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedWidgetId(null);
+  };
 
   if (loading && !data) {
     return (
       <div className="space-y-6">
         <LoadingSkeleton type="card" count={4} />
-        <LoadingSkeleton type="chart" />
+        <LoadingSkeleton type="card" count={4} />
       </div>
     );
   }
@@ -59,79 +95,109 @@ export default function DashboardPage() {
     );
   }
 
-  const { metrics, chartData } = data;
+  const hasNoVisibleWidgets = activeWidgets.length === 0;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* KPI Metric Summary Cards - 12-Column Responsive Grid */}
-      <MetricGrid>
-        {metrics.map((metric) => (
-          <StatCard
-            key={metric.id}
-            title={metric.title}
-            value={metric.value}
-            trend={metric.trend}
-            isPositive={metric.isPositive}
-            subtitle={metric.subtitle}
-            icon={getMetricIcon(metric.type)}
-          />
-        ))}
-      </MetricGrid>
-
-      {/* Analytics Recharts Visualization */}
-      <AnalyticsCard
-        title="Revenue Performance Trend"
-        subtitle="Daily revenue analytics over time"
-      >
-        <div className="h-80 w-full pt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="indigoGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#5B5FEF" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#5B5FEF" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E9EDF5" />
-              <XAxis
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 500 }}
-                dy={10}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 500 }}
-                tickFormatter={(val) => `$${val}`}
-                dx={-10}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#111827',
-                  border: 'none',
-                  borderRadius: '12px',
-                  color: '#FFFFFF',
-                  fontSize: '12px',
-                  padding: '10px 14px',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)'
-                }}
-                itemStyle={{ color: '#EEF0FF', fontWeight: 600 }}
-                formatter={(value) => [`$${value}`, 'Revenue']}
-              />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#5B5FEF"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#indigoGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+    <div className="space-y-8 animate-fadeIn pb-12">
+      {/* Top Section Header with Customize Dashboard Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 rounded-card border border-card-border shadow-xs">
+        <div>
+          <h1 className="text-xl font-extrabold text-text-primary tracking-tight">
+            Analytics Overview
+          </h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Configurable SaaS KPI metrics and real-time revenue performance.
+          </p>
         </div>
-      </AnalyticsCard>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCustomizeOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-surface bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition-all active:scale-98 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Customize Dashboard</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Hidden Widgets Notice if User Hydro-Hides All Cards */}
+      {hasNoVisibleWidgets && (
+        <div className="p-8 bg-surface rounded-card border border-dashed border-card-border text-center space-y-3">
+          <h3 className="text-sm font-bold text-text-primary">All KPI Widgets Hidden</h3>
+          <p className="text-xs text-text-secondary max-w-sm mx-auto">
+            You have hidden all KPI cards. Use the Customize Dashboard menu to enable widgets or reset layout defaults.
+          </p>
+          <button
+            type="button"
+            onClick={resetLayout}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-all cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Dashboard</span>
+          </button>
+        </div>
+      )}
+
+      {/* Dynamic Categorized Widget Sections */}
+      {CATEGORIES.map((category) => {
+        const categoryWidgets = activeWidgetsByCategory[category.id] || [];
+        if (categoryWidgets.length === 0) return null;
+
+        // Grid Column Spacing based on Category
+        const gridCols =
+          category.id === 'users'
+            ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+            : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+
+        return (
+          <section key={category.id} className="space-y-3">
+            {/* Section Header */}
+            <div>
+              <h2 className="text-sm font-extrabold text-text-primary tracking-tight">
+                {category.title}
+              </h2>
+              <p className="text-[11px] font-medium text-text-secondary mt-0.5">
+                {category.subtitle}
+              </p>
+            </div>
+
+            {/* Draggable Responsive Widget Grid */}
+            <div className={`grid ${gridCols} gap-4`}>
+              {categoryWidgets.map((widget) => (
+                <StatCard
+                  key={widget.id}
+                  id={widget.id}
+                  title={widget.title}
+                  value={widget.value}
+                  trend={widget.trend}
+                  isPositive={widget.isPositive}
+                  subtitle={widget.subtitle}
+                  icon={widget.icon}
+                  draggable={true}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
+                  isDragging={draggedWidgetId === widget.id}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      {/* Customize Dashboard Drawer Modal */}
+      <CustomizeDashboardDrawer
+        isOpen={isCustomizeOpen}
+        onClose={() => setIsCustomizeOpen(false)}
+        widgets={data.widgets || []}
+        visibleWidgets={visibleWidgets}
+        toggleWidget={toggleWidget}
+        toggleCategoryWidgets={toggleCategoryWidgets}
+        resetLayout={resetLayout}
+      />
     </div>
   );
 }

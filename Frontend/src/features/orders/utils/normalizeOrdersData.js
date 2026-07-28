@@ -51,12 +51,12 @@ export const normalizeOrdersData = (rawPayload) => {
   const rawOrdersList = Array.isArray(payload)
     ? payload
     : Array.isArray(payload.orders)
-    ? payload.orders
-    : Array.isArray(payload.items)
-    ? payload.items
-    : Array.isArray(payload.data)
-    ? payload.data
-    : [];
+      ? payload.orders
+      : Array.isArray(payload.items)
+        ? payload.items
+        : Array.isArray(payload.data)
+          ? payload.data
+          : [];
 
   const total = Number(payload.total ?? payload.count ?? rawOrdersList.length);
   const page = Number(payload.page ?? payload.currentPage ?? 1);

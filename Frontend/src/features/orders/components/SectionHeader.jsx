@@ -1,4 +1,4 @@
-import { ShoppingBag, RefreshCw, DollarSign, Layers } from 'lucide-react';
+import { ShoppingBag, RefreshCw, Layers } from 'lucide-react';
 
 export default function SectionHeader({ summary, onRefresh, loading }) {
   return (
@@ -24,7 +24,6 @@ export default function SectionHeader({ summary, onRefresh, loading }) {
             </span>
             <span className="text-slate-300">|</span>
             <span className="flex items-center text-emerald-600 font-semibold">
-              <DollarSign className="w-3.5 h-3.5 mr-0.5" />
               {summary.formattedTotalRevenueUsd} Gross
             </span>
           </div>

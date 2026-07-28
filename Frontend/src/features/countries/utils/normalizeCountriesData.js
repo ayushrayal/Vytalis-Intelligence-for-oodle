@@ -3,23 +3,36 @@
  * ALL calculations, percentages, formatting, and top country aggregations are performed here.
  */
 
-const formatInr = (amount) => {
-  if (amount === null || amount === undefined || isNaN(amount)) return '₹0.00';
-  try {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  } catch (e) {
-    return `₹${Number(amount).toFixed(2)}`;
+const formatCurrency = (amount, currencyInput = 'INR') => {
+  if (amount === null || amount === undefined || isNaN(amount)) return '$0.00';
+  const rawCurrency = String(currencyInput || 'INR').trim();
+
+  // Standard ISO 4217 Currency Code check (USD, EUR, INR, GBP, etc.)
+  if (/^[A-Z]{3}$/i.test(rawCurrency)) {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: rawCurrency.toUpperCase(),
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount);
+    } catch {
+      // Fallback
+    }
   }
+
+  // Symbol or custom prefix check ($, €, ₹, £)
+  const formattedVal = Number(amount).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+
+  return `${rawCurrency}${formattedVal}`;
 };
 
 const formatNumber = (val) => {
   if (val === null || val === undefined || isNaN(val)) return '0';
-  return new Intl.NumberFormat('en-IN').format(val);
+  return new Intl.NumberFormat('en-US').format(val);
 };
 
 const formatPercent = (val) => {
@@ -35,11 +48,11 @@ export const normalizeCountriesData = (rawPayload) => {
         totalOrders: 0,
         formattedTotalOrders: '0',
         totalGrossSalesInr: 0,
-        formattedTotalGrossSalesInr: '₹0.00',
+        formattedTotalGrossSalesInr: '$0.00',
         totalNetProceedsInr: 0,
-        formattedTotalNetProceedsInr: '₹0.00',
+        formattedTotalNetProceedsInr: '$0.00',
         avgSalesPerOrderInr: 0,
-        formattedAvgSalesPerOrderInr: '₹0.00',
+        formattedAvgSalesPerOrderInr: '$0.00',
         topCountryByRevenue: null,
         topCountryByOrders: null
       },
@@ -56,24 +69,39 @@ export const normalizeCountriesData = (rawPayload) => {
   const rawList = Array.isArray(rawPayload)
     ? rawPayload
     : Array.isArray(rawPayload.data)
-    ? rawPayload.data
-    : Array.isArray(rawPayload.countries)
-    ? rawPayload.countries
-    : [];
+      ? rawPayload.data
+      : Array.isArray(rawPayload.countries)
+        ? rawPayload.countries
+        : [];
+
+  // Determine global payload currency or default to INR
+  const overallCurrency =
+    rawList.find((i) => i.currency || i.currency_code || i.currency_symbol || i.currencySymbol)?.currency ||
+    rawList.find((i) => i.currency_code)?.currency_code ||
+    rawList.find((i) => i.currency_symbol)?.currency_symbol ||
+    rawList.find((i) => i.currencySymbol)?.currencySymbol ||
+    'INR';
 
   // Overall totals
   const totalCountries = rawList.length;
   const totalOrders = rawList.reduce((sum, item) => sum + (Number(item.orders) || 0), 0);
-  const totalGrossSalesInr = rawList.reduce((sum, item) => sum + (Number(item.gross_sales_inr) || 0), 0);
-  const totalNetProceedsInr = rawList.reduce((sum, item) => sum + (Number(item.net_proceeds_inr) || 0), 0);
+  const totalGrossSalesInr = rawList.reduce((sum, item) => sum + (Number(item.gross_sales_inr || item.gross_sales || item.revenue) || 0), 0);
+  const totalNetProceedsInr = rawList.reduce((sum, item) => sum + (Number(item.net_proceeds_inr || item.net_proceeds) || 0), 0);
   const avgSalesPerOrderInr = totalOrders > 0 ? totalGrossSalesInr / totalOrders : 0;
 
   // Process item-level records with pre-computed & pre-formatted UI properties
   const normalizedCountries = rawList.map((item, idx) => {
     const countryName = item.country || `Country ${idx + 1}`;
     const orders = Number(item.orders ?? 0);
-    const grossSalesInr = Number(item.gross_sales_inr ?? 0);
-    const netProceedsInr = Number(item.net_proceeds_inr ?? 0);
+    const grossSalesInr = Number(item.gross_sales_inr ?? item.gross_sales ?? item.revenue ?? 0);
+    const netProceedsInr = Number(item.net_proceeds_inr ?? item.net_proceeds ?? 0);
+
+    const itemCurrency =
+      item.currency ||
+      item.currency_code ||
+      item.currency_symbol ||
+      item.currencySymbol ||
+      overallCurrency;
 
     const avgSalesPerOrder = orders > 0 ? grossSalesInr / orders : 0;
     const revenueSharePercent = totalGrossSalesInr > 0 ? (grossSalesInr / totalGrossSalesInr) * 100 : 0;
@@ -82,14 +110,15 @@ export const normalizeCountriesData = (rawPayload) => {
     return {
       id: countryName,
       country: countryName,
+      currency: itemCurrency,
       orders,
       formattedOrders: formatNumber(orders),
       grossSalesInr,
-      formattedGrossSalesInr: formatInr(grossSalesInr),
+      formattedGrossSalesInr: formatCurrency(grossSalesInr, itemCurrency),
       netProceedsInr,
-      formattedNetProceedsInr: formatInr(netProceedsInr),
+      formattedNetProceedsInr: formatCurrency(netProceedsInr, itemCurrency),
       avgSalesPerOrder,
-      formattedAvgSalesPerOrder: formatInr(avgSalesPerOrder),
+      formattedAvgSalesPerOrder: formatCurrency(avgSalesPerOrder, itemCurrency),
       revenueSharePercent,
       formattedRevenueSharePercent: formatPercent(revenueSharePercent),
       ordersSharePercent,
@@ -131,11 +160,11 @@ export const normalizeCountriesData = (rawPayload) => {
       totalOrders,
       formattedTotalOrders: formatNumber(totalOrders),
       totalGrossSalesInr,
-      formattedTotalGrossSalesInr: formatInr(totalGrossSalesInr),
+      formattedTotalGrossSalesInr: formatCurrency(totalGrossSalesInr, overallCurrency),
       totalNetProceedsInr,
-      formattedTotalNetProceedsInr: formatInr(totalNetProceedsInr),
+      formattedTotalNetProceedsInr: formatCurrency(totalNetProceedsInr, overallCurrency),
       avgSalesPerOrderInr,
-      formattedAvgSalesPerOrderInr: formatInr(avgSalesPerOrderInr),
+      formattedAvgSalesPerOrderInr: formatCurrency(avgSalesPerOrderInr, overallCurrency),
       topCountryByRevenue,
       topCountryByOrders
     },

@@ -9,8 +9,8 @@ export default {
       colors: {
         primary: {
           DEFAULT: '#5B5FEF',
-          hover: '#4B4FE0',
-          light: '#EEF0FF',
+          hover: '#4A4EE3',
+          light: 'rgba(91, 95, 239, 0.12)',
         },
         accent: {
           DEFAULT: '#7C5CFC',

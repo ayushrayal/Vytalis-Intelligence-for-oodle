@@ -5,3 +5,4 @@ export { default as SectionHeader } from './SectionHeader.jsx';
 export { default as LoadingSkeleton } from './LoadingSkeleton.jsx';
 export { default as ErrorState } from './ErrorState.jsx';
 export { default as EmptyState } from './EmptyState.jsx';
+export { default as CustomizeDashboardDrawer } from './CustomizeDashboardDrawer.jsx';
