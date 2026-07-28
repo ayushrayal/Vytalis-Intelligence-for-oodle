@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { getDailyAnalytics } from '../services/dashboard.service.js';
 import { normalizeDashboardData } from '../utils/normalizeDashboardData.js';
 import { useDateFilter } from '../../../context/DateFilterContext.jsx';
+import { validateDateRange } from '../../../utils/validateDateRange.js';
 import { buildAnalyticsParams } from '../../../utils/buildAnalyticsParams.js';
 
 export function useDashboard() {
   const {
-    selectedPreset,
-    singleDate,
-    fromDate,
-    toDate,
+    startDate,
+    endDate,
     refreshVersion,
     markRefreshSuccess,
     markRefreshError
@@ -20,37 +20,63 @@ export function useDashboard() {
   const [error, setError] = useState(null);
 
   const prevRefreshVersion = useRef(refreshVersion);
+  const abortControllerRef = useRef(null);
 
   const fetchDashboardData = useCallback(async (isManualBypass = false) => {
+    // 1. Cancel previous pending request to prevent race conditions
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 2. Validate dates before requesting
+    const validation = validateDateRange({ startDate, endDate });
+    if (!validation.isValid) {
+      setError(validation.error);
+      setLoading(false);
+      markRefreshError();
+      return;
+    }
+
+    // 3. Build request query parameters
+    const params = buildAnalyticsParams({ startDate, endDate }, { isManualBypass });
+
+    // 4. Set loading state while retaining existing data to avoid UI flickering
     setLoading(true);
     setError(null);
 
-    const params = buildAnalyticsParams({
-      selectedPreset,
-      singleDate,
-      fromDate,
-      toDate,
-      isManualBypass
-    });
-
     try {
-      const response = await getDailyAnalytics(params);
+      const response = await getDailyAnalytics(params, controller.signal);
       const normalized = normalizeDashboardData(response);
       setData(normalized);
       markRefreshSuccess();
     } catch (err) {
-      const message = err.response?.data?.message || err.message || 'Failed to load dashboard analytics';
+      if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        // Request was aborted due to rapid filter change; ignore silently
+        return;
+      }
+      const message = err.parsedMessage || err.response?.data?.message || err.message || 'Failed to load dashboard analytics';
       setError(message);
       markRefreshError();
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
-  }, [selectedPreset, singleDate, fromDate, toDate, markRefreshSuccess, markRefreshError]);
+  }, [startDate, endDate, markRefreshSuccess, markRefreshError]);
 
   useEffect(() => {
     const isManualBypass = refreshVersion !== prevRefreshVersion.current;
     prevRefreshVersion.current = refreshVersion;
     fetchDashboardData(isManualBypass);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchDashboardData, refreshVersion]);
 
   return {
@@ -60,3 +86,5 @@ export function useDashboard() {
     refresh: () => fetchDashboardData(true)
   };
 }
+
+export default useDashboard;

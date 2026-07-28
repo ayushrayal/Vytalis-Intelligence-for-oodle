@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import axios from 'axios';
 import { getUsers } from '../services/users.service.js';
 import { normalizeUsersData } from '../utils/normalizeUsersData.js';
 import { sortData } from '../../../utils/tableUtils.js';
 import { useDateFilter } from '../../../context/DateFilterContext.jsx';
+import { validateDateRange } from '../../../utils/validateDateRange.js';
 import { buildAnalyticsParams } from '../../../utils/buildAnalyticsParams.js';
 
 export function useUsers() {
   const {
-    selectedPreset,
-    singleDate,
-    fromDate,
-    toDate,
+    startDate,
+    endDate,
     refreshVersion,
     markRefreshSuccess,
     markRefreshError
@@ -21,6 +21,7 @@ export function useUsers() {
   const [error, setError] = useState(null);
 
   const prevRefreshVersion = useRef(refreshVersion);
+  const abortControllerRef = useRef(null);
 
   // Lightweight Filters State (Platform & Gender)
   const [filters, setFilters] = useState({
@@ -33,23 +34,39 @@ export function useUsers() {
   const [sortOrder, setSortOrder] = useState('desc');
 
   const fetchUsersData = useCallback(async (isManualBypass = false) => {
+    // 1. Cancel previous pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 2. Validate dates before requesting
+    const validation = validateDateRange({ startDate, endDate });
+    if (!validation.isValid) {
+      setError(validation.error);
+      setLoading(false);
+      markRefreshError();
+      return;
+    }
+
+    // 3. Build request query parameters
+    const params = buildAnalyticsParams({ startDate, endDate }, { isManualBypass });
+
+    // 4. Set loading state while keeping previous data visible
     setLoading(true);
     setError(null);
 
-    const params = buildAnalyticsParams({
-      selectedPreset,
-      singleDate,
-      fromDate,
-      toDate,
-      isManualBypass
-    });
-
     try {
-      const response = await getUsers(params);
+      const response = await getUsers(params, controller.signal);
       const normalized = normalizeUsersData(response);
       setRawData(normalized);
       markRefreshSuccess();
     } catch (err) {
+      if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        return;
+      }
       const message =
         err.parsedMessage ||
         err.response?.data?.message ||
@@ -59,14 +76,22 @@ export function useUsers() {
       setError(message);
       markRefreshError();
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
-  }, [selectedPreset, singleDate, fromDate, toDate, markRefreshSuccess, markRefreshError]);
+  }, [startDate, endDate, markRefreshSuccess, markRefreshError]);
 
   useEffect(() => {
     const isManualBypass = refreshVersion !== prevRefreshVersion.current;
     prevRefreshVersion.current = refreshVersion;
     fetchUsersData(isManualBypass);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchUsersData, refreshVersion]);
 
   const processedUsers = useMemo(() => {
@@ -128,3 +153,5 @@ export function useUsers() {
     }
   };
 }
+
+export default useUsers;

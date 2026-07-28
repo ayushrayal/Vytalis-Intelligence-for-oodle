@@ -1,7 +1,5 @@
-/**
- * Reusable Date Preset Constants
- * Used across DateFilterContext, Hooks, Components, and Services.
- */
+import { calculateFilterDates } from '../utils/calculateFilterDates.js';
+
 export const DATE_PRESETS = {
   TODAY: 'today',
   YESTERDAY: 'yesterday',
@@ -25,57 +23,12 @@ export const DATE_PRESET_LABELS = {
 };
 
 /**
- * Calculates start and end date formatted as YYYY-MM-DD for a given preset.
+ * Legacy wrapper for calculateFilterDates for backward compatibility.
  */
-export const calculatePresetDates = (presetKey) => {
-  const today = new Date();
-  const formatDate = (d) => d.toISOString().split('T')[0];
-
-  let from = new Date();
-  let to = new Date();
-
-  switch (presetKey) {
-    case DATE_PRESETS.TODAY:
-      from = today;
-      to = today;
-      break;
-
-    case DATE_PRESETS.YESTERDAY:
-      from = new Date(today);
-      from.setDate(today.getDate() - 1);
-      to = new Date(from);
-      break;
-
-    case DATE_PRESETS.LAST_7_DAYS:
-      from = new Date(today);
-      from.setDate(today.getDate() - 6);
-      to = today;
-      break;
-
-    case DATE_PRESETS.LAST_30_DAYS:
-      from = new Date(today);
-      from.setDate(today.getDate() - 29);
-      to = today;
-      break;
-
-    case DATE_PRESETS.THIS_MONTH:
-      from = new Date(today.getFullYear(), today.getMonth(), 1);
-      to = today;
-      break;
-
-    case DATE_PRESETS.LAST_MONTH:
-      from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      to = new Date(today.getFullYear(), today.getMonth(), 0);
-      break;
-
-    case DATE_PRESETS.SINGLE_DATE:
-    case DATE_PRESETS.CUSTOM:
-    default:
-      return null;
+export const calculatePresetDates = (presetKey, options) => {
+  const result = calculateFilterDates(presetKey, options);
+  if (result.startDate && result.endDate) {
+    return { from: result.startDate, to: result.endDate };
   }
-
-  return {
-    from: formatDate(from),
-    to: formatDate(to)
-  };
+  return null;
 };

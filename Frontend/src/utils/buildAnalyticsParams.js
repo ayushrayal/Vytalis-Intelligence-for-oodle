@@ -1,31 +1,45 @@
-import { DATE_PRESETS } from '../constants/datePresets.js';
+import { calculateFilterDates } from './calculateFilterDates.js';
 
 /**
- * Shared helper to build standardized query parameters for analytics endpoints.
- * When selectedPreset === DATE_PRESETS.SINGLE_DATE: returns ONLY { date: YYYY-MM-DD }.
- * For other presets: returns { preset, from, to }.
+ * Shared request builder that converts calculated filter dates into backend request query parameters.
+ *
+ * Unified Strategy:
+ * - Always generates { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD', [bypassCache: 'true'] }
+ * - Never includes the `date` parameter.
  */
-export function buildAnalyticsParams({
-  selectedPreset,
-  singleDate,
-  fromDate,
-  toDate,
-  isManualBypass = false
-}) {
+export function buildAnalyticsParams(filterInput = {}, optionsInput = {}) {
   const params = {};
 
-  if (selectedPreset === DATE_PRESETS.SINGLE_DATE) {
-    const targetDate = singleDate || fromDate;
-    if (targetDate) {
-      params.date = targetDate;
+  let startDate = filterInput.startDate;
+  let endDate = filterInput.endDate;
+  const isBypass = Boolean(
+    optionsInput.bypassCache ||
+    optionsInput.isManualBypass ||
+    filterInput.bypassCache ||
+    filterInput.isManualBypass
+  );
+
+  // Handle legacy/preset arguments if startDate/endDate are not directly provided
+  if (!startDate || !endDate) {
+    const presetKey = filterInput.selectedPreset || filterInput.preset;
+    if (presetKey) {
+      const computed = calculateFilterDates(presetKey, {
+        singleDate: filterInput.singleDate,
+        customRange: {
+          startDate: filterInput.fromDate || filterInput.startDate,
+          endDate: filterInput.toDate || filterInput.endDate
+        }
+      });
+      startDate = computed.startDate;
+      endDate = computed.endDate;
     }
-  } else {
-    if (selectedPreset) params.preset = selectedPreset;
-    if (fromDate) params.from = fromDate;
-    if (toDate) params.to = toDate;
   }
 
-  if (isManualBypass) {
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+
+  // Optional manual cache bypass
+  if (isBypass) {
     params.bypassCache = 'true';
   }
 

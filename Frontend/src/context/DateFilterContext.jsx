@@ -1,12 +1,15 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { DATE_PRESETS, calculatePresetDates } from '../constants/datePresets.js';
+import { DATE_PRESETS } from '../constants/datePresets.js';
+import { calculateFilterDates } from '../utils/calculateFilterDates.js';
+import { toLocalYYYYMMDD } from '../utils/formatDate.js';
 
 const DateFilterContext = createContext(null);
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => toLocalYYYYMMDD(new Date());
 
 export function DateFilterProvider({ children }) {
-  const [selectedPreset, setSelectedPreset] = useState(() => {
+  // 1. Raw user selections stored in state
+  const [preset, setPresetState] = useState(() => {
     return localStorage.getItem('vytalis_date_preset') || localStorage.getItem('oodle_date_preset') || DATE_PRESETS.LAST_7_DAYS;
   });
 
@@ -14,53 +17,47 @@ export function DateFilterProvider({ children }) {
     return localStorage.getItem('vytalis_single_date') || getTodayString();
   });
 
-  const initialDates = useMemo(() => {
-    const preset = localStorage.getItem('vytalis_date_preset') || localStorage.getItem('oodle_date_preset') || DATE_PRESETS.LAST_7_DAYS;
-    if (preset === DATE_PRESETS.SINGLE_DATE) {
-      const sDate = localStorage.getItem('vytalis_single_date') || getTodayString();
-      return { from: sDate, to: sDate };
-    }
-    return calculatePresetDates(preset) || { from: '', to: '' };
-  }, []);
+  const [customRange, setCustomRangeState] = useState(() => {
+    const savedStart = localStorage.getItem('vytalis_custom_start') || '';
+    const savedEnd = localStorage.getItem('vytalis_custom_end') || '';
+    return { startDate: savedStart, endDate: savedEnd };
+  });
 
-  const [fromDate, setFromDate] = useState(initialDates.from);
-  const [toDate, setToDate] = useState(initialDates.to);
-
-  // Last successful refresh timestamp
+  // Global refresh lifecycle state
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
-
-  // Global refresh state (loading lifecycle)
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
 
+  // 2. Derive { startDate, endDate } dynamically via calculateFilterDates
+  const filterDates = useMemo(() => {
+    return calculateFilterDates(preset, {
+      singleDate,
+      customRange
+    });
+  }, [preset, singleDate, customRange]);
+
+  // 3. User action handlers
   const setPreset = useCallback((presetKey) => {
-    setSelectedPreset(presetKey);
+    setPresetState(presetKey);
     localStorage.setItem('vytalis_date_preset', presetKey);
     localStorage.setItem('oodle_date_preset', presetKey);
-
-    if (presetKey !== DATE_PRESETS.CUSTOM && presetKey !== DATE_PRESETS.SINGLE_DATE) {
-      const dates = calculatePresetDates(presetKey);
-      if (dates) {
-        setFromDate(dates.from);
-        setToDate(dates.to);
-      }
-    }
   }, []);
 
   const setSingleDate = useCallback((dateStr) => {
-    setSelectedPreset(DATE_PRESETS.SINGLE_DATE);
+    setPresetState(DATE_PRESETS.SINGLE_DATE);
     setSingleDateState(dateStr);
-    setFromDate(dateStr);
-    setToDate(dateStr);
     localStorage.setItem('vytalis_date_preset', DATE_PRESETS.SINGLE_DATE);
     localStorage.setItem('vytalis_single_date', dateStr);
   }, []);
 
-  const setCustomRange = useCallback(({ from, to }) => {
-    setSelectedPreset(DATE_PRESETS.CUSTOM);
-    setFromDate(from);
-    setToDate(to);
+  const setCustomRange = useCallback((rangeObj) => {
+    const sDate = rangeObj?.startDate || rangeObj?.from || '';
+    const eDate = rangeObj?.endDate || rangeObj?.to || '';
+    setPresetState(DATE_PRESETS.CUSTOM);
+    setCustomRangeState({ startDate: sDate, endDate: eDate });
     localStorage.setItem('vytalis_date_preset', DATE_PRESETS.CUSTOM);
+    localStorage.setItem('vytalis_custom_start', sDate);
+    localStorage.setItem('vytalis_custom_end', eDate);
   }, []);
 
   const refresh = useCallback(() => {
@@ -78,11 +75,21 @@ export function DateFilterProvider({ children }) {
     setIsRefreshing(false);
   }, []);
 
+  // 4. Exposed context value (with legacy aliases)
   const value = useMemo(() => ({
-    selectedPreset,
+    preset,
     singleDate,
-    fromDate,
-    toDate,
+    customRange,
+    startDate: filterDates.startDate,
+    endDate: filterDates.endDate,
+
+    // Backward compatibility aliases
+    selectedPreset: preset,
+    fromDate: filterDates.startDate,
+    toDate: filterDates.endDate,
+    date: filterDates.startDate === filterDates.endDate ? filterDates.startDate : null,
+
+    // Lifecycle & actions
     lastUpdated,
     isRefreshing,
     refreshVersion,
@@ -93,10 +100,10 @@ export function DateFilterProvider({ children }) {
     markRefreshSuccess,
     markRefreshError
   }), [
-    selectedPreset,
+    preset,
     singleDate,
-    fromDate,
-    toDate,
+    customRange,
+    filterDates,
     lastUpdated,
     isRefreshing,
     refreshVersion,

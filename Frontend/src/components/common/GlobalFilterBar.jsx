@@ -6,10 +6,10 @@ import { DATE_PRESETS, DATE_PRESET_LABELS } from '../../constants/datePresets.js
 
 export default function GlobalFilterBar() {
   const {
-    selectedPreset,
+    preset,
     singleDate,
-    fromDate,
-    toDate,
+    startDate,
+    endDate,
     lastUpdated,
     isRefreshing,
     setPreset,
@@ -19,9 +19,10 @@ export default function GlobalFilterBar() {
   } = useDateFilter();
 
   const [activePopover, setActivePopover] = useState(null); // null | 'custom' | 'single'
-  const [customFrom, setCustomFrom] = useState(fromDate || '');
-  const [customTo, setCustomTo] = useState(toDate || '');
+  const [customFrom, setCustomFrom] = useState(startDate || '');
+  const [customTo, setCustomTo] = useState(endDate || '');
   const [tempSingleDate, setTempSingleDate] = useState(singleDate || new Date().toISOString().split('T')[0]);
+  const [validationError, setValidationError] = useState('');
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 
   const customButtonRef = useRef(null);
@@ -30,10 +31,10 @@ export default function GlobalFilterBar() {
 
   // Sync custom/single date inputs when context dates change
   useEffect(() => {
-    if (fromDate) setCustomFrom(fromDate);
-    if (toDate) setCustomTo(toDate);
+    if (startDate) setCustomFrom(startDate);
+    if (endDate) setCustomTo(endDate);
     if (singleDate) setTempSingleDate(singleDate);
-  }, [fromDate, toDate, singleDate]);
+  }, [startDate, endDate, singleDate]);
 
   // Update floating popover position below trigger button
   const updatePopoverPos = useCallback(() => {
@@ -56,6 +57,7 @@ export default function GlobalFilterBar() {
   }, [activePopover]);
 
   const handleTogglePopover = (type) => {
+    setValidationError('');
     if (activePopover === type) {
       setActivePopover(null);
     } else {
@@ -104,15 +106,15 @@ export default function GlobalFilterBar() {
   const formatRangeLabel = (fromStr, toStr) => {
     if (!fromStr || !toStr) return 'Custom Range';
     try {
-      const f = new Date(fromStr).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-      const t = new Date(toStr).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+      const f = new Date(fromStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+      const t = new Date(toStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
       return `${f} → ${t}`;
     } catch {
       return `${fromStr} → ${toStr}`;
     }
   };
 
-  // Format date display for Single Date button (e.g. "Jul 22, 2026")
+  // Format date display for Single Date button
   const formatSingleDateLabel = (dateStr) => {
     if (!dateStr) return 'Single Date';
     try {
@@ -125,8 +127,13 @@ export default function GlobalFilterBar() {
 
   const handleCustomSubmit = (e) => {
     e.preventDefault();
+    setValidationError('');
     if (customFrom && customTo) {
-      setCustomRange({ from: customFrom, to: customTo });
+      if (customFrom > customTo) {
+        setValidationError('Start date cannot be after end date.');
+        return;
+      }
+      setCustomRange({ startDate: customFrom, endDate: customTo, from: customFrom, to: customTo });
       setActivePopover(null);
     }
   };
@@ -155,11 +162,11 @@ export default function GlobalFilterBar() {
   return (
     <div className="sticky top-0 z-30 bg-canvas/90 backdrop-blur-md py-3 px-6 border-b border-card-border/60 transition-all">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-surface p-2.5 rounded-card border border-card-border shadow-xs">
-        
+
         {/* Preset Pills - Single line, no wrap, no horizontal scrollbars */}
         <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {presetList.map((presetKey) => {
-            const isActive = selectedPreset === presetKey;
+            const isActive = preset === presetKey;
             return (
               <button
                 key={presetKey}
@@ -185,14 +192,14 @@ export default function GlobalFilterBar() {
             type="button"
             onClick={() => handleTogglePopover('single')}
             className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shrink-0 ${
-              selectedPreset === DATE_PRESETS.SINGLE_DATE
+              preset === DATE_PRESETS.SINGLE_DATE
                 ? 'bg-primary text-surface shadow-xs font-bold'
                 : 'bg-surface hover:bg-canvas text-text-secondary hover:text-text-primary border border-card-border/60'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>
-              {selectedPreset === DATE_PRESETS.SINGLE_DATE
+              {preset === DATE_PRESETS.SINGLE_DATE
                 ? formatSingleDateLabel(singleDate)
                 : DATE_PRESET_LABELS[DATE_PRESETS.SINGLE_DATE]}
             </span>
@@ -205,15 +212,15 @@ export default function GlobalFilterBar() {
             type="button"
             onClick={() => handleTogglePopover('custom')}
             className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shrink-0 ${
-              selectedPreset === DATE_PRESETS.CUSTOM
+              preset === DATE_PRESETS.CUSTOM
                 ? 'bg-primary text-surface shadow-xs font-bold'
                 : 'bg-surface hover:bg-canvas text-text-secondary hover:text-text-primary border border-card-border/60'
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>
-              {selectedPreset === DATE_PRESETS.CUSTOM
-                ? formatRangeLabel(fromDate, toDate)
+              {preset === DATE_PRESETS.CUSTOM
+                ? formatRangeLabel(startDate, endDate)
                 : DATE_PRESET_LABELS[DATE_PRESETS.CUSTOM]}
             </span>
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${activePopover === 'custom' ? 'rotate-180' : ''}`} />
@@ -261,6 +268,11 @@ export default function GlobalFilterBar() {
               Select Custom Date Range
             </div>
             <form onSubmit={handleCustomSubmit} className="space-y-3">
+              {validationError && (
+                <div className="p-2 text-[11px] text-red-500 bg-red-500/10 rounded-lg font-medium">
+                  {validationError}
+                </div>
+              )}
               <div>
                 <label className="block text-[11px] font-semibold text-text-secondary mb-1">Start Date</label>
                 <input
