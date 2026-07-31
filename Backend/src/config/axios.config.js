@@ -11,6 +11,19 @@ export const oodleClient = axios.create({
   timeout: 30000
 });
 
+const windsorBaseUrl = envConfig.windsorConnector?.startsWith('http')
+  ? envConfig.windsorConnector
+  : `https://connectors.windsor.ai/${envConfig.windsorConnector || 'facebook'}`;
+
+export const windsorClient = axios.create({
+  baseURL: windsorBaseUrl,
+  timeout: 30000,
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+
 // Transient error retry interceptor (Exponential backoff, max 2 retries)
 oodleClient.interceptors.response.use(
   (response) => response,

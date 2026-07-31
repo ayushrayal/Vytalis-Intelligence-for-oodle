@@ -81,9 +81,8 @@ export default function CustomizeDashboardDrawer({
                     className="flex items-center gap-2 text-xs font-bold text-text-primary hover:text-primary transition-colors cursor-pointer text-left flex-1"
                   >
                     <ChevronDown
-                      className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${
-                        isExpanded ? '' : '-rotate-90'
-                      }`}
+                      className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'
+                        }`}
                     />
                     <span>{category.title}</span>
                     <span className="text-[11px] font-semibold text-text-secondary bg-canvas px-2 py-0.5 rounded-full border border-card-border">
@@ -125,11 +124,10 @@ export default function CustomizeDashboardDrawer({
                       return (
                         <label
                           key={widget.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
-                            isChecked
-                              ? 'bg-primary/5 border-primary/30 text-text-primary font-semibold'
-                              : 'bg-surface hover:bg-canvas border-card-border/60 text-text-secondary'
-                          }`}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${isChecked
+                            ? 'bg-primary/5 border-primary/30 text-text-primary font-semibold'
+                            : 'bg-surface hover:bg-canvas border-card-border/60 text-text-secondary'
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input

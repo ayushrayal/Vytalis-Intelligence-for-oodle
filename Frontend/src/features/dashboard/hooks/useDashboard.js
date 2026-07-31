@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { getDailyAnalytics } from '../services/dashboard.service.js';
+import { getDailyAnalytics, getMetaOverview } from '../services/dashboard.service.js';
 import { normalizeDashboardData } from '../utils/normalizeDashboardData.js';
 import { useDateFilter } from '../../../context/DateFilterContext.jsx';
 import { validateDateRange } from '../../../utils/validateDateRange.js';
@@ -48,8 +48,11 @@ export function useDashboard() {
     setError(null);
 
     try {
-      const response = await getDailyAnalytics(params, controller.signal);
-      const normalized = normalizeDashboardData(response, { startDate, endDate });
+      const [dailyResponse, metaResponse] = await Promise.all([
+        getDailyAnalytics(params, controller.signal),
+        getMetaOverview(params, controller.signal)
+      ]);
+      const normalized = normalizeDashboardData(dailyResponse, { startDate, endDate }, metaResponse);
       setData(normalized);
       markRefreshSuccess();
     } catch (err) {

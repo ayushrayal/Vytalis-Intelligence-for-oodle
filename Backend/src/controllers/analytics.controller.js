@@ -49,5 +49,24 @@ export const getUsersAnalytics = async (req, res, next) => {
   }
 };
 
+export const getMetaOverview = async (req, res) => {
+  try {
+    const data = await analyticsService.getMetaOverview(req.query);
+
+    return sendSuccess(
+      res,
+      data,
+      "Meta overview retrieved successfully",
+      200
+    );
+  } catch (error) {
+    return handleServiceError(
+      res,
+      error,
+      "Failed to fetch Meta overview"
+    );
+  }
+};
+
 // Aliases for compatibility
 export const getOverview = getDailyAnalytics;

@@ -4,7 +4,8 @@ import {
   getOverview,
   getOrdersAnalytics,
   getCountriesAnalytics,
-  getUsersAnalytics
+  getUsersAnalytics,
+  getMetaOverview
 } from '../controllers/analytics.controller.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 
@@ -18,5 +19,5 @@ router.get('/overview', getOverview);
 router.get('/orders', getOrdersAnalytics);
 router.get('/countries', getCountriesAnalytics);
 router.get('/users', getUsersAnalytics);
-
+router.get("/meta/overview", getMetaOverview);
 export default router;

@@ -3,6 +3,9 @@ import { cacheService } from './cache.service.js';
 import { dedupService } from './dedup.service.js';
 import { CACHE_TTL } from '../config/cache.config.js';
 import { generateCacheKey } from '../utils/cacheKey.js';
+import { windsorClient } from "../config/axios.config.js";
+import { envConfig } from "../config/env.config.js";
+
 
 export const getDailyAnalytics = async (params = {}) => {
   const cacheKey = generateCacheKey('daily', params);
@@ -60,6 +63,36 @@ export const getUsers = async (params = {}) => {
   return data;
 };
 
+export const getMetaOverview = async (params = {}) => {
+  const date_from = params.date_from ?? params.startDate;
+  const date_to = params.date_to ?? params.endDate;
+
+  const requestParams = {
+    api_key: envConfig.windsorApiKey,
+    fields:
+      "action_values_omni_purchase,spend,cost_per_action_type_mobile_app_install,purchase_roas_omni_purchase",
+    date_from,
+    date_to,
+    filter: JSON.stringify([
+      ["account_id", "eq", envConfig.windsorMetaAccountId],
+    ]),
+  };
+
+  const windsorUrl = windsorClient.defaults.baseURL;
+
+
+  try {
+    const response = await windsorClient.get("", { params: requestParams });
+    console.log('[Meta Overview] Windsor response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('[Meta Overview] Error stack trace:', error.stack || error);
+    if (error.response) {
+      console.error('[Meta Overview] Windsor error response:', error.response.data);
+    }
+    throw error;
+  }
+};
 // Aliases for backwards compatibility with existing codebase
 export const fetchOverviewMetrics = getDailyAnalytics;
 export const fetchOrdersMetrics = getOrders;

@@ -11,16 +11,19 @@ export const axiosClient = axios.create({
 });
 
 // Request interceptor: Inject Bearer token if available
-axiosClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+axiosClient.interceptors.request.use((config) => {
+  const token = getToken();
+
+
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  
+
+  return config;
+});
 
 // Response interceptor: Standardize error messages
 axiosClient.interceptors.response.use(

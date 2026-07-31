@@ -28,6 +28,11 @@ const formatPercent = (val) => {
   return `${prefix}${Number(val).toFixed(1)}%`;
 };
 
+const formatRoas = (val) => {
+  if (val === null || val === undefined || isNaN(val)) return '0.00x';
+  return `${Number(val).toFixed(2)}x`;
+};
+
 /**
  * Generic helper to safely detect a valid daily time-series array
  * in the payload without hardcoding specific property names.
@@ -77,6 +82,11 @@ export const CATEGORIES = [
     subtitle: 'Gross revenue and net proceeds performance across USD and INR currencies'
   },
   {
+    id: 'meta',
+    title: 'Meta Overview',
+    subtitle: 'Meta advertising spend, purchase value, install cost, and return on ad spend'
+  },
+  {
     id: 'orders',
     title: 'Orders Overview',
     subtitle: 'Order volume and distribution across iOS and Android platforms'
@@ -93,7 +103,7 @@ export const CATEGORIES = [
   }
 ];
 
-export const normalizeDashboardData = (rawPayload, options = {}) => {
+export const normalizeDashboardData = (rawPayload, options = {}, metaPayload = null) => {
   if (!rawPayload) {
     return { widgets: [], categories: CATEGORIES, chartData: [], displayMode: 'empty', hasDailyTrend: false, isEmpty: true };
   }
@@ -106,6 +116,20 @@ export const normalizeDashboardData = (rawPayload, options = {}) => {
 
   const dailySeries = findValidDailySeries(payload);
   const summary = payload.summary || payload.totals || {};
+
+  // Meta Metrics Extraction
+  const metaItem = Array.isArray(metaPayload?.data?.data)
+    ? metaPayload.data.data[0]
+    : Array.isArray(metaPayload?.data)
+      ? metaPayload.data[0]
+      : Array.isArray(metaPayload)
+        ? metaPayload[0]
+        : metaPayload?.data || metaPayload || {};
+
+  const spend = metaItem?.spend ?? 0;
+  const actionValuesOmniPurchase = metaItem?.action_values_omni_purchase ?? 0;
+  const costPerActionTypeMobileAppInstall = metaItem?.cost_per_action_type_mobile_app_install ?? 0;
+  const purchaseRoasOmniPurchase = metaItem?.purchase_roas_omni_purchase ?? 0;
 
   // Metrics Extraction
   const grossSalesUsd =
@@ -164,7 +188,7 @@ export const normalizeDashboardData = (rawPayload, options = {}) => {
   const appleProceedsInr = payload.apple_proceeds_inr ?? summary.appleProceedsInr ?? 0;
   const androidProceedsInr = payload.android_proceeds_inr ?? summary.androidProceedsInr ?? 0;
 
-  // Build standardized list of 17 KPI Widget Objects
+  // Build standardized list of KPI Widget Objects
   const widgets = [
     // Category: Revenue Overview
     {
@@ -205,6 +229,48 @@ export const normalizeDashboardData = (rawPayload, options = {}) => {
       trend: summary.netInrTrend !== undefined ? formatPercent(summary.netInrTrend) : '+13.5%',
       isPositive: true,
       subtitle: 'Estimated net proceeds in INR',
+      icon: null
+    },
+
+    // Category: Meta Overview
+    {
+      id: 'meta_spend',
+      categoryId: 'meta',
+      title: 'Meta Ad Spend',
+      value: formatInr(spend),
+      trend: null,
+      isPositive: true,
+      subtitle: 'Total Meta advertising spend',
+      icon: null
+    },
+    {
+      id: 'purchase_value',
+      categoryId: 'meta',
+      title: 'Purchase Value',
+      value: formatInr(actionValuesOmniPurchase),
+      trend: null,
+      isPositive: true,
+      subtitle: 'Total omni purchase value generated',
+      icon: null
+    },
+    {
+      id: 'install_cost',
+      categoryId: 'meta',
+      title: 'Install Cost',
+      value: formatInr(costPerActionTypeMobileAppInstall),
+      trend: null,
+      isPositive: true,
+      subtitle: 'Cost per mobile app install',
+      icon: null
+    },
+    {
+      id: 'purchase_roas',
+      categoryId: 'meta',
+      title: 'Purchase ROAS',
+      value: formatRoas(purchaseRoasOmniPurchase),
+      trend: null,
+      isPositive: true,
+      subtitle: 'Return on ad spend',
       icon: null
     },
 

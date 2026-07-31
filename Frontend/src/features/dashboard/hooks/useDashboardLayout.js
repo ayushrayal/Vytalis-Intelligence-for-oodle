@@ -8,6 +8,11 @@ export const DEFAULT_WIDGET_ORDER = [
   'net_proceeds_usd',
   'gross_sales_inr',
   'net_proceeds_inr',
+  // Meta
+  'meta_spend',
+  'purchase_value',
+  'install_cost',
+  'purchase_roas',
   // Orders
   'total_orders',
   'ios_orders',
@@ -33,7 +38,9 @@ export function useDashboardLayout() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.visibleWidgets)) {
-          return parsed.visibleWidgets;
+          const existingSet = new Set(parsed.visibleWidgets);
+          const missing = DEFAULT_WIDGET_ORDER.filter((id) => !existingSet.has(id));
+          return [...parsed.visibleWidgets, ...missing];
         }
       }
     } catch {
